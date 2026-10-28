@@ -1,0 +1,21 @@
+# Ambientes Virtuais Python
+venv/
+env/
+.env
+
+# Arquivos de Dados e ZIPs (Evita o vazamento dos seus dados pessoais do Mi Fitness)
+*.zip
+20260929_6289526178_MiFitness_or1_data_copy.zip
+data/
+
+# Caches do Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Arquivos do SO / Editores
+.DS_Store
+.vscode/
+.idea/
+*.swp
