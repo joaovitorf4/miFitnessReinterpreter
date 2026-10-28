@@ -1,92 +1,63 @@
 # miFitnessReinterpreter
 
-**miFitnessReinterpreter** é uma ferramenta de processamento de dados e análise de saúde desenvolvida em Python para extrair, filtrar e reinterpretar as exportações nativas do aplicativo Mi Fitness (Xiaomi Wear / Zepp Life) de um dispositivo Redmi Watch 5 Lite ou similar.
+Reinterpreta o export do **Mi Fitness** e gera um relatório de saúde com **passos**, **sono** e **frequência cardíaca**: score diário, resumo semanal/mensal e score global.
 
-O projeto transforma os arquivos `.csv` complexos, com milhões de registros em formato JSON bruto, em relatórios de desempenho semanais e mensais. Ele avalia a qualidade da sua saúde gerando um **Score de 0 a 100** para passos, sono e frequência cardíaca utilizando fórmulas baseadas em literatura científica e parâmetros biológicos reais.
-
----
-
-## 🛠 Funcionalidades
-
-### 1. Extração Inteligente (Data Parser)
-
-O aplicativo Mi Fitness exporta um arquivo massivo que contém todo o histórico de uso misturado e estruturado em JSONs por célula (`Value`).
-
-- O script extrai dinamicamente o **mês** e **ano** baseando-se na data do nome do arquivo original.
-- Ajusta os *timestamps* de UTC para o fuso horário de Brasília (`America/Sao_Paulo`).
-- Filtra estritamente as entradas do mês atual e as separa em três arquivos CSV compactos e limpos dentro da pasta `data/`:
-  - `steps_data_MM_YYYY.csv`
-  - `sleep_data_MM_YYYY.csv`
-  - `heart_rate_data_MM_YYYY.csv`
-
-### 2. Módulo de Passos (Steps Score)
-
-Calcula a quantidade e as médias de passos por dia/semana.
-
-- **Score (0-100):** Utiliza uma função logarítmica baseada na utilidade marginal do esforço humano.
-- **Sweet Spot:** 16.000 passos garantem a nota máxima (100 pontos).
-- A progressão inicial garante muitos pontos (o ganho entre 1k e 2k é maior que o ganho entre 12k e 14k). 10.000 passos garantem a nota 80.
-
-### 3. Módulo de Sono (Sleep Quality Score)
-
-Avalia a arquitetura e continuidade do sono utilizando referências clínicas padrão:
-
-- **Duração (30pts):** Avalia se o tempo total está na janela ideal (7 a 9 horas), com penalidades suaves para *oversleeping* (excesso) ou déficits drásticos.
-- **Fase Profunda (20pts):** Avalia a secreção de hormônios do crescimento (ideal ≥ 15% da noite).
-- **Fase REM (20pts):** Avalia a restauração cognitiva (ideal ≥ 20% da noite).
-- **Eficiência (15pts):** Razão entre o tempo dormindo vs. tempo na cama.
-- **WASO / Continuidade (10pts):** Penaliza grandes períodos acordado após o início do sono (ideal ≤ 20 min).
-- **Qualidade de Respiração (5pts):** Lê a saturação/estabilidade (ideal ≥ 95 / 100).
-
-### 4. Módulo de Coração (Heart Health Score)
-
-Processa a carga alostática diária em ciclos de 24h:
-
-- **Frequência de Repouso (35pts):** Mede o Percentil 5 (P5) para aferir a bradicardia sinusal de condicionamento (ideal entre 45-65 bpm).
-- **Variabilidade Macroscópica (25pts):** Avalia o desvio padrão global do dia (SNA responsivo deve ter desvio ≥ 15 bpm).
-- **Tempo Parassimpático (20pts):** Verifica a porcentagem de leituras no dia ≤ 75 bpm para garantir tempo suficiente para síntese proteica e relaxamento (≥ 55%).
-- **Reserva Cardíaca (20pts):** Confere se houve um pico de esforço de treinamento diário (máximo ≥ 115 bpm).
-
-### 5. Consolidação Global
-
-Após gerar os relatórios individuais, as planilhas são mescladas (usando *Outer Joins*) e um peso científico geral é aplicado para fornecer uma métrica única e simples de evolução da sua saúde no mês.
-
-- **Peso do Sono:** 45% (Fator mais crítico para recuperação humana).
-- **Peso Cardíaco:** 35% (Base metabólica).
-- **Peso dos Passos (NEAT):** 20% (Apenas locomoção e gasto calórico).
-
-### 6. Arquivo de Entrada para Consolidação (`center_fitness_data.csv`)
-
-Para gerar o arquivo final `center_fitness_data.csv`, é necessário criar ou disponibilizar um arquivo de entrada no formato `.csv` dentro da pasta `data/`.
-
-- **Localização:** O arquivo de entrada deve estar dentro da pasta `data/` do projeto.
-- **Formato:** O arquivo precisa ser um `.csv` com os dados esperados pelo processo de consolidação.
-- **Arquivo final:** O processamento utiliza esse arquivo como fonte de dados para gerar o resultado `center_fitness_data.csv`.
-- **Nome do arquivo:** Verifique a linha 304 do código e substitua o nome do arquivo pelo nome correto do `.csv` criado na pasta `data/`. O nome informado no código deve corresponder exatamente ao nome do arquivo, incluindo a extensão `.csv`.
-
-Exemplo de estrutura:
-
-```text
-miFitnessReinterpreter/
-├── data/
-│   ├── seu_arquivo.csv
-│   ├── steps_data_MM_YYYY.csv
-│   ├── sleep_data_MM_YYYY.csv
-│   └── heart_rate_data_MM_YYYY.csv
-├── ...
-└── center_fitness_data.csv
-```
-
-Substitua `seu_arquivo.csv` pelo nome real do arquivo de entrada utilizado no projeto. O exemplo é ilustrativo; mantenha os nomes e caminhos exigidos pelo código.
-
----
-
-## 🚀 Como Utilizar
-
-### Pré-requisitos
-
-Certifique-se de ter o Python instalado (3.8+) e as dependências abaixo:
+## Uso
 
 ```bash
-pip install pandas numpy
+pip install -r requirements.txt
+
+python main.py                                   # usa o CSV mais recente de data/ e o mês do registro mais recente
+python main.py data\20260929_..._fitness_data.csv --mes 2026-09
+python main.py --mes 2026-08 --salvar-intermediarios data   # também grava sleep/steps/heart_rate por mês
+```
+
+- `--mes AAAA-MM` evita a inferência (lê o arquivo uma vez só, ~0,3 s mais rápido) e é a forma segura se você exportar nos primeiros dias do mês seguinte.
+- Os CSVs brutos ficam em `data/` (já no `.gitignore`: são dados pessoais de saúde e o nome do arquivo contém seu Uid).
+
+## Estrutura
+
+```
+miFitnessReinterpreter/
+├── main.py                      # atalho para a CLI
+├── mifitness_reinterpreter/     # pacote (nome de import em minúsculas, como manda a PEP 8)
+├── tests/
+├── requirements.txt
+└── requirements-dev.txt
+```
+
+| Arquivo (em `mifitness_reinterpreter/`) | Responsabilidade |
+|---|---|
+| `config.py` | Fuso, chaves do CSV, pesos e **todos os limiares** dos scores |
+| `extract.py` | Lê o CSV bruto em chunks, filtra mês/chave, remove duplicatas |
+| `parsers.py` | JSON do campo `Value` -> colunas numéricas; epoch -> dia local |
+| `scoring.py` | Funções **puras** de score (sem I/O, fáceis de testar) |
+| `metrics.py` | Uma `Metrica` por indicador (bruto -> tabela diária) + registro `METRICAS` |
+| `report.py` | Semanas, score global e formatação do texto |
+| `cli.py` | Argumentos e orquestração |
+
+### Adicionar uma métrica (ex.: estresse)
+
+1. Escreva `diario_estresse(raw)` em `metrics.py` (devolve DataFrame indexado por `data` com coluna `score`).
+2. Crie uma `Metrica(...)` e acrescente em `METRICAS`, com `peso` e os `Campo`s do relatório.
+3. Ajuste os pesos em `config.py` para somarem 1. O score global e o relatório não precisam mudar.
+
+## Como o relatório trata os dados
+
+- **Sonecas não entram na média do sono.** O score do dia é o da sessão mais longa; as sonecas ficam em `soneca_min`.
+- **Score global sem `fillna(0)`.** Dia sem leitura de uma métrica renormaliza os pesos das demais (e exige pelo menos 2 métricas).
+- **Semanas com contagem de dias** no cabeçalho: a semana 4 vai do dia 22 ao fim do mês e pode ter até 10 dias, então compare pela média diária, não pelo total.
+- Leitura do bruto em chunks, só com as colunas necessárias, filtrando por epoch antes de converter datas; duplicatas `(Key, Time)` são removidas.
+
+## Limitações conhecidas
+
+- Um dia que tenha **só** uma soneca registrada (sem sono noturno) tem essa soneca pontuada como sono principal.
+- Os limiares dos scores são heurísticos e ficam perto do teto (cardíaco e sono); recalibrar contra a sua própria linha de base é um passo à parte.
+- Os pesos do score global (sono 45%, cardíaco 35%, passos 20%) também são heurísticos.
+
+## Testes
+
+```bash
+pip install -r requirements-dev.txt
+pytest
 ```
